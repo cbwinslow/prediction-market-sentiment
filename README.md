@@ -2,6 +2,29 @@
 
 A free tool that analyzes sentiment, detects arbitrage opportunities, and calculates volatility metrics across prediction markets on **Kalshi** and **Polymarket**.
 
+## ⚡ Current Status (April 2026)
+
+### ✅ Working
+- **Polymarket Gamma API** - Live data without authentication
+  - 200+ active markets with real-time prices
+  - Volume data ($10M+ on popular markets like GTA VI)
+  - Best bid/ask prices
+- Arbitrage detection algorithm (tested with historical data)
+- Sentiment analysis by category
+- Cross-asset arbitrage module (prediction markets vs stock/crypto prices)
+- CLI with 7 commands
+
+### ⚠️ Limited By Data
+- **Kalshi API** - Public endpoint returns markets but no active bid/ask data
+  - Need API key + account activity for live pricing
+
+### 🔄 Next Step (Requires Your Action)
+- **Polymarket Wallet Auth** - For order book depth (bids/asks with sizes)
+  - Need MetaMask private key
+  - Enables real cross-platform arbitrage detection
+
+---
+
 ## Features
 
 ### 1. Arbitrage Opportunity Finder
@@ -32,17 +55,29 @@ A free tool that analyzes sentiment, detects arbitrage opportunities, and calcul
 - Shows order book depth
 - Displays spreads and volumes
 
+### 6. Cross-Asset Arbitrage
+- Compares prediction market probabilities to options-implied probabilities
+- Uses Black-Scholes model for risk-neutral probabilities
+- Supports stocks (via yfinance) and crypto
+
+---
+
 ## Installation
 
 ```bash
-# Clone or download the project
+# Clone the project
 cd prediction-market-sentiment
+
+# Create virtual environment (recommended)
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+# or: .venv\Scripts\activate  # Windows
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Or run the setup script
-python setup.py
+# Install optional: py-clob-client for authenticated access
+pip install py-clob-client
 ```
 
 ## Quick Start
@@ -51,7 +86,7 @@ python setup.py
 # Show all commands
 python -m src.cli --help
 
-# Find arbitrage opportunities
+# Find arbitrage opportunities (needs live data)
 python -m src.cli arbitrage --min-spread 0.02 --min-confidence 0.3
 
 # Analyze sentiment by category
@@ -63,136 +98,161 @@ python -m src.cli trends --top 10
 # View liquidity rankings
 python -m src.cli liquidity --top 20
 
-# List all markets
-python -m src.cli markets --platform both
+# List all markets (Polymarket has live data!)
+python -m src.cli markets --platform polymarket
+
+# Cross-asset arbitrage (prediction vs stock/crypto prices)
+python -m src.cli cross-arbitrage --assets BTC-USD,SPY
 
 # Get a comprehensive summary
 python -m src.cli summary
 ```
 
+## Testing Scripts
+
+```bash
+# Test live data from Polymarket
+python test_live_arbitrage.py
+
+# Test historical arbitrage (proof of concept)
+python test_historical_arbitrage.py
+
+# Test authenticated client (requires wallet)
+python test_auth_client.py
+```
+
+---
+
 ## How It Works
 
 ### Data Sources
-All data is fetched from **free public APIs**:
 
-- **Kalshi**: `https://api.elections.kalshi.com/trade-api/v2`
-  - No authentication required for public market data
-  - Official Python SDK: `kalshi_python_sync`
-  
-- **Polymarket**: `https://clob.polymarket.com`
-  - No authentication required for public endpoints
-  - SDK: `py-clob-client`
+| Platform | API | Auth Required? | Data Available |
+|----------|-----|----------------|-----------------|
+| Polymarket | Gamma API (free) | No | ✅ Prices, volume, best bid/ask |
+| Polymarket | CLOB API | Yes (wallet) | ✅ Order book depth, trading |
+| Kalshi | Trade API | Yes (API key) | ⚠️ Markets only (no active bids) |
+
+**Polymarket Gamma API** - No authentication required:
+- 200+ active markets with real-time prices
+- Volume data (e.g., GTA VI: $13M+)
+- Best bid/ask from order book
 
 ### Arbitrage Detection
 
-The tool uses natural language processing techniques to match similar markets:
+The tool uses natural language processing to match similar markets:
 
-1. **Text similarity**: Sequence matcher compares market questions
+1. **Text similarity**: SequenceMatcher compares market questions
 2. **Keyword matching**: Jaccard similarity on extracted key terms
 3. **Price comparison**: Calculates spread between matched markets
 4. **Confidence scoring**: Combines similarity score and volume metrics
 
-Example arbitrage opportunity:
-```
-Platforms: kalshi ↔ polymarket
-Kalshi: KXAPPROVAL "Will Biden's approval be > 45%?" - Yes: $0.48
-Polymarket: "Will Biden's approval rating be above 45%?" - Yes: $0.52
-Spread: 4 cents (8.3%)
-Confidence: 85%
-```
+### Cross-Asset Arbitrage
 
-### Sentiment Analysis
+Compares prediction market implied probabilities to:
+- **Options-implied probabilities** (Black-Scholes model)
+- **Stock/crypto prices** (via yfinance)
 
-Markets are categorized into broader themes:
-- **Politics**: Elections, approval ratings, government actions
-- **Crypto**: Bitcoin, Ethereum, blockchain events
-- **Sports**: Games, tournaments, player outcomes
-- **Economy**: Inflation, GDP, Fed decisions
-- **Weather**: Temperature, storms, climate events
-- **Technology**: AI, tech companies, innovations
+Example:
+- Prediction market: "Bitcoin above $100k by Dec 2025" = 45%
+- Black-Scholes (BTC at $72k, 50% vol, 0.8 years to expiry) = 62%
+- Discrepancy: 17% → Potential arbitrage opportunity
 
-For each category, the tool calculates:
-- Average implied probability
-- Volume-weighted probability
-- Bullish/bearish count
-- Volatility (standard deviation)
-- Composite sentiment score
+---
 
-## Output Examples
+## Setting Up Authentication
 
-### Arbitrage Table
-```
-┏━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━┓
-┃ Platforms              ┃ Kalshi Market                                                          ┃ Polymarket Question                                      ┃ Spread   ┃ Spread %┃ Confidence┃
-┡━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━┩
-│ kalshi ↔ polymarket    │ KXAPPROVAL "Will Biden approval be > 44% Dec?"                        │ "Will Biden's approval rating be above 44% at end of… │ $0.042   ┃ 8.4%   │ 78%       │
-│ kalshi ↔ polymarket    │ KXAPPROVAL "Will Biden approval be > 43% Dec?"                        │ "Will Biden's approval rating be above 43% at end of… │ $0.038   ┃ 7.6%   │ 72%       │
-│ kalshi ↔ polymarket    │ KXETH "Will Ethereum be > $4000 Dec 31?"                              │ "Will ETH be above $4000 on Dec 31, 2025?"             │ $0.085   ┃ 6.8%   │ 85%       │
-└───────────────────────┴─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────┴──────────┴────────┴──────────┘
+### Polymarket Wallet (Recommended)
+
+For order book depth and trading:
+
+```bash
+# 1. Get your private key from MetaMask:
+#    Account menu → Account Details → Show Private Key
+#    Copy the key (WITHOUT the 0x prefix)
+
+# 2. Set environment variable
+export POLYMARKET_PRIVATE_KEY="your_key_without_0x"
+
+# 3. (Optional) For email/Magic wallet
+export POLYMARKET_FUNDER_ADDRESS="your_proxy_wallet"
+export POLYMARKET_SIGNATURE_TYPE="1"
 ```
 
-### Sentiment Table
+Then run `python test_auth_client.py` to verify.
+
+### Kalshi API Key
+
+1. Create account at [kalshi.com](https://kalshi.com)
+2. Generate API key in account settings
+3. Use authenticated endpoints for live bid/ask data
+
+---
+
+## Sample Output
+
+### Live Markets (Polymarket Gamma API)
 ```
-┏━━━━━━━━━━ ┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┓
-┃ Category  ┃ Markets  ┃ Avg Prob ┃ Wtd Prob ┃ Bullish  ┃ Bearish  ┃ Neutral  ┃ Volatility┃ Score      ┃
-┡━━━━━━━━━━ ╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━┩
-│ politics  ┃ 127      ┃ 58.2%    ┃ 57.8%    ┃ 78       ┃ 42       ┃ 7        ┃ 0.142     ┃ +0.23      │
-│ crypto    ┃ 89       ┃ 62.4%    ┃ 63.1%    ┃ 61       ┃ 25       ┃ 3        ┃ 0.189     ┃ +0.42      │
-│ sports    ┃ 203      ┃ 51.2%    ┃ 51.0%    ┃ 98       ┃ 101      ┃ 4        ┃ 0.098     ┃ -0.01      │
-│ economy   ┃ 56       ┃ 47.8%    ┃ 48.2%    ┃ 19       ┃ 34       ┃ 3        ┃ 0.121     ┃ -0.21      │
-└───────────┴──────────┴──────────┴──────────┴──────────┴──────────┴──────────┴───────────┴────────────┘
+Q: Russia-Ukraine Ceasefire before GTA VI?
+  Yes: 52.50%, Volume: $1,460,280
+
+Q: Will Jesus Christ return before GTA VI?
+  Yes: 48.50%, Volume: $10,936,726
+
+Q: GTA VI released before June 2026?
+  Yes: 1.85%, Volume: $13,301,208
 ```
 
-## Technical Details
+### Arbitrage Test (Historical Proof of Concept)
+```
+Question                                                  Spread       Volume
+--------------------------------------------------------------------------------
+NBA: Wizards vs. Pistons (02/01/2023)                     21.1% $   254,806
+Will the FDV of OpenSea's token be above $15b 1 week after l   14.7% $    88,334
+NBA: Wizards vs. Nets (02/04/2023)                        13.4% $   223,815
+```
 
-### Project Structure
+---
+
+## Project Structure
+
 ```
 prediction-market-sentiment/
 ├── src/
-│   ├── cli.py              # Main CLI interface
+│   ├── cli.py                     # Main CLI interface
 │   ├── clients/
-│   │   ├── kalshi_client.py    # Kalshi API wrapper
-│   │   └── polymarket_client.py # Polymarket API wrapper
+│   │   ├── kalshi_client.py       # Kalshi API wrapper
+│   │   ├── polymarket_client.py  # Polymarket Gamma API (free)
+│   │   └── polymarket_auth.py     # Polymarket CLOB API (wallet auth)
 │   ├── analyzers/
-│   │   ├── arbitrage.py        # Arbitrage detection
-│   │   ├── sentiment.py        # Sentiment analysis
-│   │   └── volatility.py       # Volatility metrics
+│   │   ├── arbitrage.py          # Platform arbitrage detection
+│   │   ├── sentiment.py          # Category sentiment analysis
+│   │   ├── volatility.py         # Liquidity/volatility metrics
+│   │   └── cross_asset.py        # Cross-asset arbitrage
 │   └── utils/
-│       └── models.py           # Data models
+│       ├── models.py              # Data models
+│       └── exporter.py           # Export utilities
+├── tests/
+│   └── test_basic.py
+├── test_live_arbitrage.py         # Test live data
+├── test_historical_arbitrage.py  # Proof of concept
+├── test_auth_client.py           # Auth setup
 ├── requirements.txt
 ├── setup.py
-├── README.md
-└── tests/
+└── README.md
 ```
 
-### Python SDKs (Optional)
-You can also use the official SDKs directly if you need advanced features:
-
-```bash
-pip install kalshi_python_sync py-clob-client
-```
+---
 
 ## Limitations
 
-- **Matching algorithm**: Text similarity matching is approximate; some matched pairs may not be identical events
-- **No real trading**: This is an analysis tool only - no actual trading execution
-- **Rate limits**: Public APIs may have rate limits; use responsibly
-- **Historical data**: Limited to what's available via public endpoints
-- **Volume estimates**: Polymarket volume is estimated from token prices (actual volume data requires auth)
-- **Data availability**: Kalshi's API may return many markets with zero liquidity at times. Active markets with real prices are often concentrated in specific series (e.g., weather, esports). For best results, query during active trading periods or focus on series with known volume.
+- **Kalshi data**: Public API returns markets but no active bid/ask. Need API key for live data.
+- **Matching algorithm**: Text similarity is approximate; some matches may not be identical events
+- **No real trading**: This is an analysis tool only
+- **Rate limits**: Respect API limits (4000 req/10s for Gamma API)
+- **Cross-platform arb**: Requires authenticated access for order book depth
 
-## Future Enhancements
-
-- [ ] Real-time WebSocket streaming for live updates
-- [ ] Historical price trend analysis
-- [ ] Correlation matrix between markets
-- [ ] Portfolio rebalancing suggestions
-- [ ] Export to CSV/Excel
-- [ ] Web dashboard (Streamlit/Dash)
-- [ ] Machine learning prediction models
-- [ ] Alert/notification system for new arbitrage opportunities
-- [ ] Order book depth visualization
-- [ ] Multi-language support
+---
 
 ## Disclaimer
 
@@ -206,12 +266,18 @@ Prediction markets involve real money and significant risk. The arbitrage opport
 
 Always do your own research and understand the risks before making any financial decisions.
 
+---
+
 ## License
 
 MIT License - feel free to use and modify.
+
+---
 
 ## Credits
 
 Built using free public APIs from:
 - [Kalshi](https://kalshi.com) - CFTC-regulated prediction market
 - [Polymarket](https://polymarket.com) - Decentralized prediction market
+
+Official SDKs: `py-clob-client`, `kalshi_python_sync`
