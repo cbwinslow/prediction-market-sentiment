@@ -1,0 +1,48 @@
+# Environment
+.venv/
+env/
+*.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+coverage.xml
+.pytest_cache/
+
+# Project specific
+output/
+data/
+logs/
+*.log
+
+# Credentials
+secrets/
+secrets.json
+credentials.json
+api_keys.txt
+
+# OS specific
+*.db
+*.sqlite
+
+# Kalshi / Polymarket
+# (No credentials needed for public API, but if you add auth later)
+kalshi_*.pem
+polymarket_key*
